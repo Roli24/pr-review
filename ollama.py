@@ -7,8 +7,11 @@ class Ollaman:
     def format_issues(issues):
         formatted_issues = []
         for issue in issues['issues']:
-            formatted_issues.append(f"- {issue['message']} (line {issue['line']})")
+            start_line = issue['textRange']['startLine']
+            end_line = issue['textRange']['endLine']
+            formatted_issues.append(f"- {issue['message']} (start line {start_line}) (end line {end_line})")
         return "\n".join(formatted_issues)
+
 
     @staticmethod
     def format_additional_metrics(metrics):
@@ -19,9 +22,21 @@ class Ollaman:
 
     @staticmethod
     def run_analysis(issues, additional_metrics, git_diff):
-        #formatted_issues = Ollaman.format_issues(issues)
+        formatted_issues = Ollaman.format_issues(issues)
         #formatted_metrics = Ollaman.format_additional_metrics(additional_metrics)
-        prompt = f"Analyze and optimize the code. Identify issues and provide an improved version with explanations:\n\n### Issues Identified:\n### Git Diff Changes:\n{git_diff}\n\n### Optimized Code:\n```java\n(Provide the improved version of the code)\n```\n\n### Explanations:\n- Explain what was changed and why."
+        prompt = (
+            "Analyze and optimize the code. Identify issues and provide an improved version with explanations:\n\n"
+            "### Issues Identified:\n"
+            f"{formatted_issues}\n\n"
+            "### Git Diff Changes:\n"
+            f"{git_diff}\n\n"
+            "### Optimized Code:\n"
+            "```java\n"
+            "(Provide the improved version of the code)\n"
+            "```\n\n"
+            "### Explanations:\n"
+            "- Explain what was changed and why."
+        ) 
         payload = {
             "model": "llama3",
             "prompt": prompt,
