@@ -18,10 +18,10 @@ class Ollaman:
         return "\n".join(formatted_metrics)
 
     @staticmethod
-    def run_analysis(issues, additional_metrics):
-        formatted_issues = Ollaman.format_issues(issues)
-        formatted_metrics = Ollaman.format_additional_metrics(additional_metrics)
-        prompt = f"Analyze and optimize the code. Identify issues and provide an improved version with explanations:\n\n### Issues Identified:\n{formatted_issues}\n\n### Additional Metrics:\n{formatted_metrics}\n\n### Optimized Code:\n```python\n(Provide the improved version of the code)\n```\n\n### Explanations:\n- Explain what was changed and why."
+    def run_analysis(issues, additional_metrics, git_diff):
+        #formatted_issues = Ollaman.format_issues(issues)
+        #formatted_metrics = Ollaman.format_additional_metrics(additional_metrics)
+        prompt = f"Analyze and optimize the code. Identify issues and provide an improved version with explanations:\n\n### Issues Identified:\n### Git Diff Changes:\n{git_diff}\n\n### Optimized Code:\n```java\n(Provide the improved version of the code)\n```\n\n### Explanations:\n- Explain what was changed and why."
         payload = {
             "model": "llama3",
             "prompt": prompt,
