@@ -6,12 +6,11 @@ from .git_utils import get_github_pr_diff
 
 def main():
     # Get GitHub PR diff
-    git_diff = get_github_pr_diff(GITHUB_REPO, GITHUB_PR_NUMBER, GITHUB_TOKEN)
-    print("GitHub PR diff:", git_diff)
-    
-    # Analyze the fetched code using SonarQube
-    SonarQube.run_analysis()
-    sonarqube_results = SonarQube.get_results()
+    modified_files = get_github_pr_diff(GITHUB_REPO, GITHUB_PR_NUMBER, GITHUB_TOKEN)
+    print("GitHub PR diff:", modified_files)
+
+    SonarQube.run_analysis_on_changed_code(modified_files)   
+    sonarqube_results = SonarQube.get_results(modified_files)
     print("SonarQube results:", sonarqube_results)
     
     # Fetch additional metrics
@@ -19,7 +18,7 @@ def main():
     print("Additional SonarQube metrics:", additional_metrics)
     
     # Pass all data to Ollaman model
-    ollaman_results = Ollaman.run_analysis(sonarqube_results, additional_metrics, git_diff)
+    ollaman_results = Ollaman.run_analysis(sonarqube_results, additional_metrics, modified_files)
     
     # Perform performance analysis
    # performance_analysis = analyze_performance(sonarqube_results, ollaman_results)
