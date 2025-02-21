@@ -1,54 +1,63 @@
 import subprocess
-from .config import SONARQUBE_URL, SONARQUBE_TOKEN, PROJECT_KEY, SONAR_SCANNER_PATH
+from .config import SONARQUBE_URL, SONARQUBE_TOKEN, PROJECT_KEY, SONAR_SCANNER_PATH, GITHUB_TOKEN, GITHUB_PR_NUMBER
+import os
+import tempfile
 
-import subprocess
-from tempfile import NamedTemporaryFile
-import requests
 
 class SonarQube:
     @staticmethod
-    def run_analysis_on_changed_code(files_with_changes):
-        for file_path, changed_code in files_with_changes.items():
-            print(f"Analyzing {file_path}...")
+    def run_analysis_on_changed_code(code_text):
+        print(f"Running SonarQube analysis on PR {GITHUB_PR_NUMBER}...")
+        # Create a temporary file to store the code
+        if isinstance(code_text, dict):
+            code_text = str(code_text)
+        with tempfile.NamedTemporaryFile(delete=False, mode='w', suffix='.java') as temp_file:
+            temp_file.write(code_text)
+            temp_file_path = temp_file.name
+        
+        print("Temporary file created:", temp_file_path)
 
-            # Create a temporary file to store the changed code
-            with NamedTemporaryFile(delete=False, suffix=".java") as temp_file:
-                temp_file.write(changed_code.encode())
-                temp_file_path = temp_file.name
+         # Read and print the contents of the temporary file
+        with open(temp_file_path, 'r') as temp_file:
+            file_contents = temp_file.read()
+            print("Contents of the temporary file:")
+            print(file_contents)
+        try:
+            # Run SonarQube analysis on the temporary file
+            result = subprocess.run([
+                SONAR_SCANNER_PATH,
+                f'-Dsonar.projectKey={PROJECT_KEY}',
+                f'-Dsonar.host.url={SONARQUBE_URL}',
+                f'-Dsonar.login={SONARQUBE_TOKEN}',
+                f'-Dsonar.sources={temp_file_path}'
+                '-X'  # Enable full debug logging
+            ], check=True, capture_output=True, text=True)
 
-            
-            # Run SonarQube analysis on this temporary file
-            try:
-                result = subprocess.run([SONAR_SCANNER_PATH, 
-                                 f'-Dsonar.projectKey={PROJECT_KEY}', 
-                                 f"-Dsonar.sources={temp_file_path}",
-                                 f'-Dsonar.host.url={SONARQUBE_URL}', 
-                                 f'-Dsonar.login={SONARQUBE_TOKEN}', 
-                                 f'-Dsonar.scm.disabled=true', 
-                                 f'-Dsonar.exclusions=**/Pictures/**'], 
-                                check=True, capture_output=True, text=True)
-                print("SonarQube analysis completed successfully." + result.stdout)
-                print(result.stdout)
-            except subprocess.CalledProcessError as e:
-                print(f"Error running SonarQube analysis for {file_path}: {e}")
-                print(e.stdout)
-                print(e.stderr)
+            print("SonarQube analysis completed successfully.")
+            print(result.stdout)
+        except subprocess.CalledProcessError as e:
+            print("Error: ", e.stderr)
+            print("Exit Code: ", e.returncode)
+            print("Command: ", e.cmd)
+        finally:
+            # Clean up the temporary file
+            if os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
 
 
     @staticmethod
-    def get_results(files_with_changes):
-        file_paths = ",".join(files_with_changes.keys())  # Convert file list to SonarQube format
-        
+    def get_results():
+        # Fetch PR analysis results directly from SonarQube
         response = requests.get(
             f'{SONARQUBE_URL}/api/issues/search',
             params={
                 "componentKeys": PROJECT_KEY,
-                "file": file_paths,  # Only get results for changed files
+                "pullRequest": GITHUB_PR_NUMBER,  # Fetch results for the PR
             },
-            auth=(SONARQUBE_TOKEN, ''))
+            auth=(SONARQUBE_TOKEN, '')
+        )
         return response.json()
 
-    
     @staticmethod
     def get_additional_metrics():
         metrics = ['coverage', 'duplicated_lines_density', 'code_smells', 'bugs', 'vulnerabilities']
@@ -56,3 +65,4 @@ class SonarQube:
         response = requests.get(f'{SONARQUBE_URL}/api/measures/component?component={PROJECT_KEY}&metricKeys={metrics_str}', 
                                 auth=(SONARQUBE_TOKEN, ''))
         return response.json()
+
